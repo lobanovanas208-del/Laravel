@@ -12,22 +12,17 @@ WORKDIR /var/www/html
 
 COPY . .
 
-# Устанавливаем зависимости (без --no-dev, чтобы были все пакеты)
+# Устанавливаем зависимости
 RUN composer install --optimize-autoloader
 
-# Генерация ключа и кэша (если нужно)
-RUN php artisan key:generate
-RUN php artisan ziggy:generate
-
-# Сборка фронтенда (если есть)
-RUN npm install && npm run build || echo "Frontend build skipped"
+# Сборка фронтенда (если есть) - пропускаем, если не нужно
+RUN npm install --legacy-peer-deps && npm run build || echo "Frontend build skipped"
 
 # Права на запись
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
 EXPOSE 8000
 
-# Запуск без миграций (они будут выполняться вручную позже)
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Запуск с миграциями (выполняются при старте)
 CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
