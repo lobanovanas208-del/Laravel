@@ -25,27 +25,27 @@ WORKDIR /var/www/html
 # Копируем все файлы проекта
 COPY . .
 
-# Устанавливаем Node-зависимости и собираем фронтенд
-RUN npm install && npm run build
-
-# Создаём файл SQLite
-RUN touch database/database.sqlite
-
-# Устанавливаем переменные окружения для Laravel
+# Устанавливаем переменные окружения для Laravel (нужны для Ziggy)
 ENV DB_CONNECTION=sqlite
 ENV APP_ENV=production
 ENV APP_DEBUG=false
 
-# Устанавливаем зависимости Composer
+# Устанавливаем зависимости Composer (Ziggy ставится через composer)
 RUN composer install --no-dev --optimize-autoloader
+
+# Генерируем файлы Ziggy (маршруты для JavaScript)
+RUN php artisan ziggy:generate
+
+# Устанавливаем Node-зависимости и собираем фронтенд
+RUN npm install && npm run build
+
+# Создаём файл SQLite, если его нет
+RUN touch database/database.sqlite
 
 # Выполняем миграции (если они есть)
 RUN php artisan migrate --force --verbose
 
-# Кэшируем конфиги (пока закомментируем для отладки)
-# RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
-
-# Права на запись для всех нужных папок
+# Права на запись для нужных папок
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
 
