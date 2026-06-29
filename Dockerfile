@@ -1,5 +1,8 @@
 FROM php:8.2-fpm
 
+ENV APP_URL=https://laravel-site-natf.onrender.com
+ENV ASSET_URL=https://laravel-site-natf.onrender.com
+
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libonig-dev libxml2-dev zip unzip \
     libpq-dev nodejs npm sqlite3 libsqlite3-dev
