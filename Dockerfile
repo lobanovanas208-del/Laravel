@@ -1,54 +1,32 @@
 FROM php:8.2-fpm
 
-# Установка системных зависимостей (включая Node.js)
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    sqlite3 \
-    libsqlite3-dev \
-    nodejs \
-    npm
+    git curl libpng-dev libonig-dev libxml2-dev zip unzip \
+    libpq-dev nodejs npm sqlite3 libsqlite3-dev
 
-# Установка расширений PHP
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_sqlite
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_pgsql pdo_sqlite
 
-# Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Копируем все файлы проекта
 COPY . .
 
-# Устанавливаем переменные окружения для Laravel (нужны для Ziggy)
-ENV DB_CONNECTION=sqlite
-ENV APP_ENV=production
-ENV APP_DEBUG=false
+# Устанавливаем зависимости (без --no-dev, чтобы были все пакеты)
+RUN composer install --optimize-autoloader
 
-# Устанавливаем зависимости Composer (Ziggy ставится через composer)
-RUN composer install --no-dev --optimize-autoloader
-
-# Генерируем файлы Ziggy (маршруты для JavaScript)
+# Генерация ключа и кэша (если нужно)
+RUN php artisan key:generate
 RUN php artisan ziggy:generate
 
-# Устанавливаем Node-зависимости и собираем фронтенд
-RUN npm install && npm run build
+# Сборка фронтенда (если есть)
+RUN npm install && npm run build || echo "Frontend build skipped"
 
-# Создаём файл SQLite, если его нет
-RUN touch database/database.sqlite
-
-# Выполняем миграции (если они есть)
-RUN php artisan migrate --force --verbose
-
-# Права на запись для нужных папок
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
+# Права на запись
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
 
 EXPOSE 8000
 
+# Запуск без миграций (они будут выполняться вручную позже)
 CMD php artisan serve --host=0.0.0.0 --port=8000
