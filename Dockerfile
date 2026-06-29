@@ -12,20 +12,23 @@ WORKDIR /var/www/html
 
 COPY . .
 
-# Устанавливаем зависимости (без --no-dev)
+# Установка зависимостей (включая dev-пакеты, чтобы не было ошибок)
 RUN composer install --optimize-autoloader
 
-# Генерация Ziggy (если есть)
-RUN php artisan ziggy:generate || echo "Ziggy generation skipped"
+# Генерация Ziggy (если нужно)
+RUN php artisan ziggy:generate || true
 
 # Сборка фронтенда (если есть)
-RUN npm install && npm run build || echo "Frontend build skipped"
+RUN npm install && npm run build || true
 
-# Права на запись
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/build /var/www/html/database
+# Права на запись для storage и database
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database /var/www/html/public/build
+
+# Создаём пустой файл базы, если его нет
+RUN touch /var/www/html/database/database.sqlite
 
 EXPOSE 8000
 
-# Запуск сервера (без миграций)
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
+# Запуск сервера БЕЗ миграций
+CMD php artisan serve --host=0.0.0.0 --port=8000
